@@ -1,14 +1,15 @@
-import { motion } from 'framer-motion'
-import { Link, useSearchParams } from 'react-router-dom'
-import { Disc3, Flame, Play, Sparkles } from 'lucide-react'
-import LoadingSkeleton from '../components/LoadingSkeleton'
-import MusicCard from '../components/MusicCard'
-import SearchBar from '../components/SearchBar'
-import SectionHeader from '../components/SectionHeader'
-import { normalizeTrack } from '../context/playerUtils'
-import { useAsync } from '../hooks/useAsync'
-import { searchAudiusTracks } from '../services/audiusService'
-import { searchArtists } from '../services/musicBrainzService'
+import { motion } from 'framer-motion';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Disc3, Flame, Music, Sparkles, User } from 'lucide-react';
+import LoadingSkeleton from '../components/LoadingSkeleton';
+import MusicCard from '../components/MusicCard';
+import AlbumCard from '../components/AlbumCard';
+import SearchBar from '../components/SearchBar';
+import SectionHeader from '../components/SectionHeader';
+import { useAsync } from '../hooks/useAsync';
+import { searchArtists, searchAlbums, searchSongs } from '../services/musicbrainzApi';
+import { searchYouTubeSongs } from '../services/youtubeApi';
+import { usePlayer } from '../context/usePlayer';
 
 const categories = [
   { name: 'Telugu Mass', color: 'from-orange-500/20 to-transparent' },
@@ -17,21 +18,59 @@ const categories = [
   { name: 'Anime OST', color: 'from-fuchsia-500/20 to-transparent' },
   { name: 'Lofi Chill', color: 'from-cyan-500/20 to-transparent' },
   { name: 'EDM Drops', color: 'from-emerald-500/20 to-transparent' },
-]
+];
+
+// Normalization function for MusicBrainz song to be used by the player
+const normalizeMbSongForPlayer = async (mbSong) => {
+  if (!mbSong) return null;
+  const artistName = mbSong['artist-credit']?.[0]?.name || 'Unknown Artist';
+  const youtubeQuery = `${mbSong.title} ${artistName}`;
+  const youtubeResults = await searchYouTubeSongs(youtubeQuery, 1);
+  const youtubeTrack = youtubeResults[0];
+
+  return {
+    id: mbSong.id,
+    title: mbSong.title,
+    artist: artistName,
+    album: mbSong.releases?.[0]?.title || 'Single',
+    cover: mbSong.coverArt,
+    // The audio URL needs to be handled differently for YouTube
+    // We store the videoId and source to be handled by the player component
+    audio: `https://www.youtube.com/watch?v=${youtubeTrack?.id}`,
+    source: 'YouTube',
+    videoId: youtubeTrack?.id,
+    raw: mbSong,
+  };
+};
+
 
 export default function Search() {
-  const [params, setParams] = useSearchParams()
-  const query = params.get('q') || 'lofi'
-  const results = useAsync(() => searchAudiusTracks(query, 18), [query], [])
-  const artists = useAsync(() => searchArtists(query, 8), [query], [])
-  const tracks = results.data.map(normalizeTrack).filter(Boolean)
+  const [params, setParams] = useSearchParams();
+  const query = params.get('q');
+  const { playTrack } = usePlayer();
+
+  const { data: artists, loading: artistsLoading } = useAsync(() => query ? searchArtists(query, 8) : [], [query], []);
+  const { data: albums, loading: albumsLoading } = useAsync(() => query ? searchAlbums(query, 6) : [], [query], []);
+  const { data: songs, loading: songsLoading } = useAsync(() => query ? searchSongs(query, 12) : [], [query], []);
 
   const handleCategoryClick = (cat) => {
-    setParams({ q: cat })
-  }
+    setParams({ q: cat });
+  };
+
+  const handlePlaySong = async (song) => {
+    const fullTrack = await normalizeMbSongForPlayer(song);
+    if (fullTrack) {
+      playTrack(fullTrack, [fullTrack]); // Player expects a playlist
+    } else {
+      // Handle case where no YouTube video was found
+      console.error("Could not find a playable version for this song.");
+    }
+  };
+
+  const isLoading = artistsLoading || albumsLoading || songsLoading;
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -39,7 +78,7 @@ export default function Search() {
     >
       {/* Search Header */}
       <section className="relative z-20 flex flex-col items-center justify-center space-y-8 text-center pt-8 pb-12">
-        <motion.div 
+        <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.5 }}
@@ -49,17 +88,16 @@ export default function Search() {
             <Sparkles size={14} /> Neural Search Engine
           </div>
           <h1 className="mb-10 text-4xl font-black text-white md:text-6xl">What's your frequency?</h1>
-          
+
           <div className="relative">
-            {/* Ambient glow behind search bar */}
             <div className="absolute inset-0 -z-10 rounded-full bg-cyan-400/20 blur-3xl" />
-            <SearchBar initial={query} />
+            <SearchBar initial={query || ''} />
           </div>
         </motion.div>
       </section>
 
-      {/* Categories Grid (Trending/Moods) */}
-      {!params.get('q') && (
+      {/* Categories Grid */}
+      {!query && (
         <section>
           <SectionHeader kicker="Explore" title="Dimensions" />
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
@@ -86,46 +124,75 @@ export default function Search() {
 
       {/* Results */}
       {query && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="space-y-16"
         >
+          <div className="flex items-center gap-3 mb-8">
+            <SectionHeader kicker="Signals acquired" title={`Results for "${query}"`} />
+            {isLoading && <div className="size-5 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />}
+          </div>
+
+          {/* Songs Section */}
           <section>
-            <div className="flex items-center gap-3 mb-8">
-              <SectionHeader kicker="Signals acquired" title={`Results for "${query}"`} />
-              {results.loading && <div className="size-5 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />}
-            </div>
-            
-            {results.loading ? (
-              <LoadingSkeleton count={12} />
-            ) : tracks.length > 0 ? (
+            <SectionHeader icon={<Music />} title="Song Matches" />
+            {songsLoading ? (
+              <LoadingSkeleton type="music" count={12} />
+            ) : songs && songs.length > 0 ? (
               <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 xl:grid-cols-6">
-                {tracks.map((track, i) => (
+                {songs.map((song, i) => (
                   <motion.div
-                    key={track.id}
+                    key={song.id}
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: i * 0.05 }}
                   >
-                    <MusicCard track={track} tracks={tracks} />
+                    {/* We pass a handler to MusicCard to deal with the async normalization */}
+                    <MusicCard track={song} onPlay={() => handlePlaySong(song)} />
                   </motion.div>
                 ))}
               </div>
             ) : (
               <div className="flex h-40 flex-col items-center justify-center rounded-[2rem] border border-white/10 bg-white/5 backdrop-blur-md">
-                <p className="text-lg font-bold text-white/50">No signals found in this dimension.</p>
+                <p className="text-lg font-bold text-white/50">No songs found.</p>
               </div>
             )}
           </section>
 
+          {/* Albums Section */}
           <section>
-            <SectionHeader kicker="Creators" title="Artist Matches" />
-            {artists.loading ? (
-              <LoadingSkeleton count={4} />
+            <SectionHeader icon={<Disc3 />} title="Album Matches" />
+            {albumsLoading ? (
+              <LoadingSkeleton type="album" count={6} />
+            ) : albums && albums.length > 0 ? (
+              <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 xl:grid-cols-6">
+                {albums.map((album, i) => (
+                  <motion.div
+                    key={album.id}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: i * 0.05 }}
+                  >
+                    <AlbumCard album={album} />
+                  </motion.div>
+                ))}
+              </div>
             ) : (
+              <div className="flex h-40 flex-col items-center justify-center rounded-[2rem] border border-white/10 bg-white/5 backdrop-blur-md">
+                <p className="text-lg font-bold text-white/50">No albums found.</p>
+              </div>
+            )}
+          </section>
+
+          {/* Artists Section */}
+          <section>
+            <SectionHeader icon={<User />} title="Artist Matches" />
+            {artistsLoading ? (
+              <LoadingSkeleton type="artist" count={8} />
+            ) : artists && artists.length > 0 ? (
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                {artists.data.slice(0, 8).map((artist, i) => (
+                {artists.map((artist, i) => (
                   <motion.div
                     key={artist.id}
                     initial={{ opacity: 0, x: -20 }}
@@ -144,10 +211,17 @@ export default function Search() {
                   </motion.div>
                 ))}
               </div>
+            ) : (
+              <div className="flex h-40 flex-col items-center justify-center rounded-[2rem] border border-white/10 bg-white/5 backdrop-blur-md">
+                <p className="text-lg font-bold text-white/50">No artists found.</p>
+              </div>
             )}
           </section>
         </motion.div>
       )}
+    </motion.div>
+  );
+}
     </motion.div>
   )
 }

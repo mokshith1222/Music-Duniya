@@ -4,18 +4,25 @@ const jsonHeaders = {
   Accept: 'application/json',
 }
 
-export const musicBrainzApi = axios.create({
+export const musicbrainzClient = axios.create({
   baseURL: 'https://musicbrainz.org/ws/2/',
   headers: jsonHeaders,
-  params: { fmt: 'json' },
-})
+});
+
+musicbrainzClient.interceptors.request.use((config) => {
+  config.params = {
+    ...config.params,
+    fmt: 'json',
+  };
+  return config;
+});
 
 export const audiusApi = axios.create({
   baseURL: 'https://discoveryprovider.audius.co/v1/',
   headers: jsonHeaders,
 })
 
-export const lrclibApi = axios.create({
+export const lrclibClient = axios.create({
   baseURL: 'https://lrclib.net/api/',
   headers: jsonHeaders,
 })

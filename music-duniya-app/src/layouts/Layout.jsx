@@ -49,6 +49,10 @@ export default function Layout() {
           </motion.div>
         </AnimatePresence>
       </main>
+      
+      <Player />
+      <Dock />
+      </main>
       <Dock />
       <Player />
     </div>

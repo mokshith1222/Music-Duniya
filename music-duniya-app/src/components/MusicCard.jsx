@@ -1,11 +1,22 @@
 import { motion } from 'framer-motion'
 import { Heart, ListPlus, Play } from 'lucide-react'
-import { coverGradient } from '../assets/coverFallback'
 import { usePlayer } from '../context/usePlayer'
+import { coverFallback } from '../assets/coverFallback';
 
-export default function MusicCard({ track, tracks = [] }) {
+export default function MusicCard({ track, tracks = [], onPlay }) {
   const { playTrack, addToQueue, toggleFavorite, favorites } = usePlayer()
   const isFavorite = favorites.some((item) => item.id === track.id)
+
+  const imageUrl = track.coverArt || track.cover || coverFallback(track.id);
+  const artistName = track.artist || track['artist-credit']?.[0]?.name || 'Unknown Artist';
+
+  const handlePlay = () => {
+    if (onPlay) {
+      onPlay();
+    } else {
+      playTrack(track, tracks);
+    }
+  }
 
   return (
     <motion.article
@@ -20,8 +31,8 @@ export default function MusicCard({ track, tracks = [] }) {
       
       <div className="relative overflow-hidden rounded-xl bg-black/40">
         <img 
-          src={track.cover || coverGradient} 
-          alt="" 
+          src={imageUrl} 
+          alt={track.title}
           className="aspect-square w-full object-cover transition-transform duration-700 group-hover:scale-110 group-hover:brightness-110" 
           loading="lazy" 
         />
@@ -32,7 +43,7 @@ export default function MusicCard({ track, tracks = [] }) {
           <motion.button
             whileHover={{ scale: 1.1, boxShadow: '0 0 20px rgba(255,255,255,0.3)' }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => playTrack(track, tracks)}
+            onClick={handlePlay}
             className="grid size-12 place-items-center rounded-full bg-white text-black shadow-xl"
             aria-label={`Play ${track.title}`}
           >
@@ -43,7 +54,7 @@ export default function MusicCard({ track, tracks = [] }) {
       
       <div className="mt-3 px-1 min-w-0">
         <h3 className="line-clamp-1 text-sm font-bold text-white/90 group-hover:text-white transition-colors">{track.title}</h3>
-        <p className="line-clamp-1 mt-0.5 text-[11px] font-medium text-white/40 group-hover:text-white/60 transition-colors">{track.artist}</p>
+        <p className="line-clamp-1 mt-0.5 text-[11px] font-medium text-white/40 group-hover:text-white/60 transition-colors">{artistName}</p>
       </div>
       
       <div className="mt-3 flex gap-2 px-1 pb-0.5 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
