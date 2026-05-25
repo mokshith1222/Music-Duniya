@@ -40,6 +40,10 @@ export function PlayerProvider({ children }) {
     persist('md_recent', nextRecent)
   }
 
+  const playSong = (song) => {
+    playTrack(song, [song])
+  }
+
   const togglePlay = () => {
     if (!currentTrack) return
     setIsPlaying((value) => !value)
@@ -99,6 +103,7 @@ export function PlayerProvider({ children }) {
       toggleFavorite,
       addToPlaylist,
       setIsPlaying,
+      playSong,
     }),
     [currentTrack, isPlaying, queue, recentlyPlayed, favorites, playlists],
   )

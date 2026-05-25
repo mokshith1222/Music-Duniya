@@ -7,9 +7,10 @@ import LyricsModal from './LyricsModal'
 import MusicUniverseMode from './MusicUniverseMode'
 
 export default function Player() {
-  const { audioRef, currentTrack, isPlaying, setIsPlaying, togglePlay, playNext, playPrev, queue, toggleFavorite, favorites } = usePlayer()
+  const { audioRef, currentTrack, isPlaying, setIsPlaying, togglePlay, playNext, playPrev, queue, toggleFavorite, favorites, isMuted, toggleMute } = usePlayer()
   const [showLyrics, setShowLyrics] = useState(false)
   const [isUniverseMode, setIsUniverseMode] = useState(false)
+  const [showQueue, setShowQueue] = useState(false)
 
   useEffect(() => {
     const audio = audioRef.current
@@ -127,6 +128,10 @@ export default function Player() {
             onClose={() => setIsUniverseMode(false)}
             isFavorite={isFavorite}
             toggleFavorite={toggleFavorite}
+            isMuted={isMuted}
+            toggleMute={toggleMute}
+            onQueue={() => setShowQueue(!showQueue)}
+            onLyrics={() => setShowLyrics(true)}
           />
         )}
       </AnimatePresence>

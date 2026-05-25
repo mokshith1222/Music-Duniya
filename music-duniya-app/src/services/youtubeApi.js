@@ -40,5 +40,8 @@ export const getTrendingYouTubeSongs = (maxResults = 12) =>
 export const getTeluguYouTubeSongs = (maxResults = 12) =>
   searchYouTubeSongs('latest Telugu songs official music videos', maxResults)
 
+export const getHindiYouTubeSongs = (maxResults = 12) =>
+  searchYouTubeSongs('latest Hindi songs official music videos', maxResults)
+
 export const getYouTubeEmbedUrl = (videoId) =>
   `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`

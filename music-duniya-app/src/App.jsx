@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import Layout from './components/Layout'
+import Layout from './layouts/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 import Album from './pages/Album'
 import Artist from './pages/Artist'
@@ -12,6 +12,9 @@ import Radio from './pages/Radio'
 import Search from './pages/Search'
 import Signup from './pages/Signup'
 import YouTube from './pages/YouTube'
+import LikedSongs from './pages/LikedSongs'
+import AIMood from './pages/AIMood'
+import Library from './pages/Library'
 
 function App() {
   return (
@@ -28,6 +31,9 @@ function App() {
         <Route path="radio" element={<Radio />} />
         <Route path="jamendo" element={<Jamendo />} />
         <Route path="favorites" element={<ProtectedRoute><Favorites /></ProtectedRoute>} />
+        <Route path="liked" element={<ProtectedRoute><LikedSongs /></ProtectedRoute>} />
+        <Route path="mood" element={<ProtectedRoute><AIMood /></ProtectedRoute>} />
+        <Route path="library" element={<ProtectedRoute><Library /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

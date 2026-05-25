@@ -1,7 +1,7 @@
 import { motion, useScroll, useTransform } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { BrainCircuit, Disc3, Play, Radar, Sparkles } from 'lucide-react'
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import LoadingSkeleton from '../components/LoadingSkeleton'
 import MusicCard from '../components/MusicCard'
 import SectionHeader from '../components/SectionHeader'
@@ -9,25 +9,33 @@ import { coverGradient } from '../assets/coverFallback'
 import { normalizeTrack } from '../context/playerUtils'
 import { usePlayer } from '../context/usePlayer'
 import { useAsync } from '../hooks/useAsync'
-import { getTrendingTracks } from '../services/audiusService'
+import { getTrendingYouTubeSongs, getTeluguYouTubeSongs, getHindiYouTubeSongs } from '../services/youtubeApi'
 import { getJamendoTracks } from '../services/jamendoService'
+import { getTopStations } from '../services/radioService'
+import { getMoodPlaylist } from '../services/openrouterService'
+import { searchYouTubeSongs } from '../services/youtubeApi'
 
 const aiCards = [
   ['Neural Mix', 'A live taste model tuned to your recent plays.', 'from-cyan-400/10 to-transparent', 'shadow-[0_0_30px_rgba(34,211,238,0.1)]'],
   ['Mood Radar', 'Detects late-night focus, city walks, and high-energy sessions.', 'from-fuchsia-400/10 to-transparent', 'shadow-[0_0_30px_rgba(232,121,249,0.1)]'],
   ['Duniya Flow', 'Blends indie, radio, and underground signals into one stream.', 'from-amber-300/10 to-transparent', 'shadow-[0_0_30px_rgba(252,211,77,0.1)]'],
-]
+];
 
 export default function Home() {
   const { playTrack, recentlyPlayed } = usePlayer()
-  const trending = useAsync(() => getTrendingTracks(12), [], [])
-  const jamendo = useAsync(() => getJamendoTracks({ limit: 8 }), [], [])
-  const tracks = trending.data.map(normalizeTrack).filter(Boolean)
-  const indie = jamendo.data.map((track) =>
-    normalizeTrack({ ...track, artist: track.artist_name, cover: track.album_image, audio: track.audio, source: 'Jamendo' }),
-  )
-  const heroTrack = tracks[0] || indie[0]
-  const carousel = [...tracks, ...indie].slice(0, 8)
+  const trending = useAsync(() => getTrendingYouTubeSongs(12), [], [])
+  const teluguTrending = useAsync(() => getTeluguYouTubeSongs(6), [], [])
+  const hindiTrending = useAsync(() => getHindiYouTubeSongs(6), [], [])
+  const lofi = useAsync(() => getJamendoTracks({ limit: 6, tags: 'lofi' }), [], [])
+  const radioStations = useAsync(() => getTopStations(3), [], [])
+  
+  const tracks = trending.data?.map(normalizeTrack).filter(Boolean) || []
+  const teluguTracks = teluguTrending.data?.map(normalizeTrack).filter(Boolean) || []
+  const hindiTracks = hindiTrending.data?.map(normalizeTrack).filter(Boolean) || []
+  const lofiTracks = lofi.data?.map((track) => normalizeTrack({ ...track, artist: track.artist_name, cover: track.album_image, audio: track.audio, source: 'Jamendo' })) || []
+
+  const heroTrack = tracks[0] || lofiTracks[0]
+  const carousel = [...tracks, ...lofiTracks].slice(0, 8)
 
   const ref = useRef(null)
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] })
@@ -154,29 +162,20 @@ export default function Home() {
         </motion.div>
       </section>
 
-      {/* Dynamic Carousel */}
+      {/* Trending Songs */}
       <section>
-        <SectionHeader kicker="The Orbit" title="Top Signals" />
-        <div className="flex gap-4 overflow-x-auto pb-6 pt-2 px-1 snap-x hide-scrollbar">
-          {carousel.map((track, index) => (
-            <motion.button
+        <SectionHeader title="Trending Songs" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          {trending.loading ? <LoadingSkeleton count={6} /> : tracks.slice(0, 6).map((track, i) => (
+            <motion.div
               key={track.id}
-              onClick={() => playTrack(track, carousel)}
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{ delay: index * 0.04, type: 'spring', damping: 20 }}
-              whileHover={{ y: -6, scale: 1.02 }}
-              className="relative min-w-[180px] shrink-0 snap-start rounded-[1.5rem] border border-white/5 bg-white/[0.02] p-3 text-left backdrop-blur-md transition-all hover:bg-white/[0.04] hover:border-white/10 hover:shadow-[0_10px_30px_rgba(0,0,0,0.3)] group"
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.05 }}
             >
-              <div className="overflow-hidden rounded-xl">
-                <img src={track.cover || coverGradient} alt="" className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-              </div>
-              <div className="mt-3 px-1">
-                <p className="line-clamp-1 text-sm font-bold text-white/90 group-hover:text-white transition-colors">{track.title}</p>
-                <p className="mt-0.5 line-clamp-1 text-xs font-medium text-white/40">{track.artist}</p>
-              </div>
-            </motion.button>
+              <MusicCard track={track} tracks={tracks} />
+            </motion.div>
           ))}
         </div>
       </section>
@@ -201,61 +200,194 @@ export default function Home() {
         ))}
       </section>
 
-      {/* Independent Catalog */}
-      <section className="grid gap-6 xl:grid-cols-[1fr_360px]">
-        <div>
-          <SectionHeader kicker="Underground" title="Indie Futures" action={<Link className="text-[10px] font-bold uppercase tracking-widest text-white/50 hover:text-white transition-colors" to="/jamendo">Explore</Link>} />
-          {jamendo.loading ? <LoadingSkeleton count={6} /> : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              {indie.slice(0, 8).map((track, i) => (
-                <motion.div
-                  key={track.id}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.05 }}
-                >
-                  <MusicCard track={track} tracks={indie} />
-                </motion.div>
-              ))}
-            </div>
-          )}
+      {/* Telugu Trending */}
+      <section>
+        <SectionHeader title="Telugu Trending" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          {teluguTrending.loading ? <LoadingSkeleton count={6} /> : teluguTracks.map((track, i) => (
+            <motion.div
+              key={track.id}
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.05 }}
+            >
+              <MusicCard track={track} tracks={teluguTracks} />
+            </motion.div>
+          ))}
         </div>
-        
-        <motion.div 
-          initial={{ opacity: 0, x: 20 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }}
-          className="rounded-[2rem] border border-white/5 bg-white/[0.02] p-5 backdrop-blur-xl"
-        >
-          <SectionHeader title="Recent Echoes" />
-          <div className="mt-2 space-y-1">
-            {recentlyPlayed.length === 0 && <p className="text-xs text-white/30 p-4 text-center">No recent signals detected.</p>}
-            {recentlyPlayed.slice(0, 6).map((track, i) => (
-              <motion.button 
-                key={track.id} 
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.05 }}
-                whileHover={{ backgroundColor: 'rgba(255,255,255,0.05)' }}
-                onClick={() => playTrack(track)} 
-                className="group flex w-full items-center gap-3 rounded-xl p-2 transition-all"
-              >
-                <div className="relative size-12 shrink-0 overflow-hidden rounded-lg">
-                  <img src={track.cover || coverGradient} alt="" className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-110" />
-                  <div className="absolute inset-0 grid place-items-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-                    <Play size={12} className="text-white ml-0.5" fill="currentColor" />
-                  </div>
-                </div>
-                <div className="flex-1 text-left min-w-0">
-                  <span className="line-clamp-1 text-sm font-bold text-white/90 group-hover:text-white transition-colors">{track.title}</span>
-                  <span className="line-clamp-1 text-[10px] font-medium text-white/40">{track.artist}</span>
-                </div>
-              </motion.button>
-            ))}
-          </div>
-        </motion.div>
       </section>
+
+      {/* Hindi Trending */}
+      <section>
+        <SectionHeader title="Hindi Trending" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          {hindiTrending.loading ? <LoadingSkeleton count={6} /> : hindiTracks.map((track, i) => (
+            <motion.div
+              key={track.id}
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.05 }}
+            >
+              <MusicCard track={track} tracks={hindiTracks} />
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* Chill/LoFi */}
+      <section>
+        <SectionHeader title="Chill/LoFi" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          {lofi.loading ? <LoadingSkeleton count={6} /> : lofiTracks.map((track, i) => (
+            <motion.div
+              key={track.id}
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.05 }}
+            >
+              <MusicCard track={track} tracks={lofiTracks} />
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* AI Mood Worlds */}
+      <section>
+        <SectionHeader title="AI Mood Worlds" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <MoodCard mood="Focus" image="/src/assets/moods/focus.jpg" />
+          <MoodCard mood="Gym" image="/src/assets/moods/gym.jpg" />
+          <MoodCard mood="Relax" image="/src/assets/moods/relax.jpg" />
+          <MoodCard mood="Party" image="/src/assets/moods/party.jpg" />
+        </div>
+      </section>
+
+      {/* AI Playlist Generator */}
+      <section>
+        <SectionHeader title="AI Playlist Generator" />
+        <AIPlaylistGenerator />
+      </section>
+
+      {/* Live Radio */}
+      <section>
+        <SectionHeader title="Live Radio" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {radioStations.loading ? <LoadingSkeleton count={3} /> : radioStations.data.map((station, i) => (
+            <motion.div
+              key={station.stationuuid}
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.05 }}
+            >
+              <button onClick={() => playTrack({
+                id: station.stationuuid,
+                title: station.name,
+                artist: `${station.country || 'Live'} Radio`,
+                cover: station.favicon || coverGradient,
+                audio: station.url_resolved || station.url,
+                source: 'Radio Browser',
+              })} className="w-full glass-orbit flex items-center gap-4 rounded-[1.6rem] p-4 text-left hover:bg-white/10">
+                <img src={station.favicon || coverGradient} alt="" className="size-14 rounded-xl object-cover" />
+                <span className="min-w-0 flex-1">
+                  <span className="line-clamp-1 block font-black">{station.name}</span>
+                  <span className="line-clamp-1 block text-sm text-muted">{station.country || 'Global'} · {station.tags || 'Live stream'}</span>
+                </span>
+                <Radar size={20} className="text-cyan-200" />
+              </button>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* Recently Played */}
+      <section>
+        <SectionHeader title="Recent Echoes" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          {recentlyPlayed.length === 0 && <p className="text-xs text-white/30 p-4 text-center col-span-full">No recent signals detected.</p>}
+          {recentlyPlayed.slice(0, 6).map((track, i) => (
+            <motion.div
+              key={track.id}
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.05 }}
+            >
+              <MusicCard track={track} tracks={recentlyPlayed} />
+            </motion.div>
+          ))}
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function MoodCard({ mood, image }) {
+  return (
+    <Link to={`/ai-mood?mood=${mood}`} className="relative aspect-video rounded-2xl overflow-hidden group">
+      <img src={image} alt={mood} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+      <div className="absolute inset-0 bg-black/40" />
+      <div className="absolute inset-0 flex items-center justify-center">
+        <h3 className="text-2xl font-black text-white">{mood}</h3>
+      </div>
+    </Link>
+  )
+}
+
+function AIPlaylistGenerator() {
+  const [prompt, setPrompt] = useState('')
+  const [generatedTracks, setGeneratedTracks] = useState([])
+  const [isLoading, setIsLoading] = useState(false)
+  const { playTrack } = usePlayer()
+
+  const generatePlaylist = async (e) => {
+    e.preventDefault()
+    if (!prompt) return
+    setIsLoading(true)
+    setGeneratedTracks([])
+    try {
+      const moodPlaylist = await getMoodPlaylist(prompt)
+      const searchPromises = moodPlaylist.map(song => searchYouTubeSongs(`${song.title} ${song.artist}`, 1))
+      const searchResults = await Promise.all(searchPromises)
+      const tracks = searchResults.flat().map(normalizeTrack)
+      setGeneratedTracks(tracks)
+    } catch (error) {
+      console.error("Failed to generate playlist:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <form onSubmit={generatePlaylist} className="relative">
+        <input
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="Describe a mood, genre, or activity..."
+          className="h-12 w-full rounded-full border border-white/10 bg-white/10 pl-6 pr-24 outline-none focus:border-cyan-200/70"
+        />
+        <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 h-9 px-4 rounded-full bg-cyan-400 text-black font-bold text-sm flex items-center gap-2">
+          {isLoading ? 'Generating...' : 'Create'}
+        </button>
+      </form>
+      {isLoading && <LoadingSkeleton count={3} />}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        {generatedTracks.map((track, i) => (
+          <motion.div
+            key={track.id}
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: i * 0.05 }}
+          >
+            <MusicCard track={track} tracks={generatedTracks} />
+          </motion.div>
+        ))}
+      </div>
     </div>
   )
 }

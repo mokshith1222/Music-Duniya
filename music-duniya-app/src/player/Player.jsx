@@ -3,8 +3,8 @@ import { Heart, ListMusic, Mic2, Pause, Play, SkipForward, Volume2, Expand } fro
 import { motion, AnimatePresence } from 'framer-motion'
 import { coverGradient } from '../assets/coverFallback'
 import { usePlayer } from '../context/usePlayer'
-import LyricsModal from './LyricsModal'
-import MusicUniverseMode from './MusicUniverseMode'
+import LyricsModal from '../components/LyricsModal'
+import MusicUniverseMode from '../components/MusicUniverseMode'
 
 export default function Player() {
   const { audioRef, currentTrack, isPlaying, setIsPlaying, togglePlay, playNext, playPrev, queue, toggleFavorite, favorites } = usePlayer()

@@ -1,13 +1,13 @@
 import { NavLink } from 'react-router-dom'
-import { Heart, Home, ListMusic, Radio, Search, Sparkles, Star } from 'lucide-react'
+import { Heart, Home, ListMusic, Radio, Search, Sparkles, Star, Library, Music } from 'lucide-react'
 
 const links = [
   { to: '/', label: 'Home', icon: Home },
   { to: '/search', label: 'Search', icon: Search },
-  { to: '/playlist/daily', label: 'Playlist', icon: ListMusic },
+  { to: '/library', label: 'Library', icon: Library },
   { to: '/radio', label: 'Radio', icon: Radio },
-  { to: '/jamendo', label: 'Jamendo', icon: Sparkles },
-  { to: '/favorites', label: 'Favorites', icon: Heart },
+  { to: '/mood', label: 'AI Moods', icon: Sparkles },
+  { to: '/liked', label: 'Liked Songs', icon: Heart },
 ]
 
 export default function Sidebar() {

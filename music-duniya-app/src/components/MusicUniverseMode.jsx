@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, Disc3, Heart, ListMusic, Mic2, Pause, Play, SkipBack, SkipForward, Volume2 } from 'lucide-react'
 import { coverGradient } from '../assets/coverFallback'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { usePlayer } from '../context/usePlayer'
 
 function formatTime(seconds) {
@@ -11,6 +11,32 @@ function formatTime(seconds) {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+const Particle = ({ x, y, size, opacity }) => (
+  <motion.div
+    style={{
+      position: 'absolute',
+      left: `${x}%`,
+      top: `${y}%`,
+      width: size,
+      height: size,
+      borderRadius: '50%',
+      background: 'rgba(125, 249, 255, 0.8)',
+      boxShadow: '0 0 8px rgba(125, 249, 255, 1)',
+    }}
+    animate={{
+      x: [0, (Math.random() - 0.5) * 200],
+      y: [0, (Math.random() - 0.5) * 200],
+      opacity: [0, opacity, 0],
+    }}
+    transition={{
+      duration: Math.random() * 5 + 5,
+      repeat: Infinity,
+      repeatType: 'reverse',
+      ease: 'easeInOut',
+    }}
+  />
+);
+
 export default function MusicUniverseMode({ 
   currentTrack, 
   isPlaying, 
@@ -19,11 +45,26 @@ export default function MusicUniverseMode({
   playPrev, 
   onClose,
   isFavorite,
-  toggleFavorite
+  toggleFavorite,
+  toggleMute,
+  isMuted,
+  onQueue,
+  onLyrics
 }) {
   const { audioRef } = usePlayer()
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
+  const [particles, setParticles] = useState([]);
+
+  useEffect(() => {
+    const newParticles = Array.from({ length: 50 }).map(() => ({
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      size: Math.random() * 3 + 1,
+      opacity: Math.random() * 0.5 + 0.2,
+    }));
+    setParticles(newParticles);
+  }, []);
 
   useEffect(() => {
     const audio = audioRef?.current
@@ -35,7 +76,6 @@ export default function MusicUniverseMode({
     audio.addEventListener('timeupdate', updateTime)
     audio.addEventListener('loadedmetadata', updateDuration)
     
-    // Set initial values
     setCurrentTime(audio.currentTime)
     setDuration(audio.duration || 0)
 
@@ -52,21 +92,24 @@ export default function MusicUniverseMode({
       initial={{ opacity: 0, y: '100%' }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: '100%' }}
-      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-      className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-black selection:bg-white/20"
+      transition={{ type: 'spring', damping: 30, stiffness: 100 }}
+      className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-background selection:bg-white/20"
     >
       {/* Dynamic Ambient Background */}
       <div className="absolute inset-0 z-0">
         <motion.div 
           animate={{
             scale: [1, 1.1, 1],
-            opacity: isPlaying ? [0.3, 0.5, 0.3] : 0.2,
+            opacity: isPlaying ? [0.4, 0.6, 0.4] : 0.2,
           }}
           transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute inset-0 bg-cover bg-center blur-[120px] saturate-200"
+          className="absolute inset-0 bg-cover bg-center blur-[150px] saturate-150"
           style={{ backgroundImage: `url(${currentTrack?.cover || coverGradient})` }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-[#020308] opacity-80" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-background/60 to-background" />
+        <div className="absolute inset-0">
+          {particles.map((p, i) => <Particle key={i} {...p} />)}
+        </div>
       </div>
 
       {/* Header */}
@@ -81,7 +124,7 @@ export default function MusicUniverseMode({
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/50">Playing from Universe</p>
           <p className="text-sm font-semibold text-white/90">Duniya Flow</p>
         </div>
-        <button className="grid size-12 place-items-center rounded-full bg-white/5 backdrop-blur-md transition hover:bg-white/15">
+        <button onClick={onQueue} className="grid size-12 place-items-center rounded-full bg-white/5 backdrop-blur-md transition hover:bg-white/15">
           <ListMusic size={20} className="text-white" />
         </button>
       </div>
@@ -96,7 +139,7 @@ export default function MusicUniverseMode({
           <motion.div
             animate={{ rotate: isPlaying ? 360 : 0 }}
             transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-            className={`absolute inset-0 rounded-full border border-white/10 ${isPlaying ? 'shadow-[0_0_80px_rgba(255,255,255,0.15)]' : ''} bg-black/40 backdrop-blur-3xl`}
+            className={`absolute inset-0 rounded-full border border-white/10 ${isPlaying ? 'shadow-[0_0_80px_rgba(138,43,226,0.3)]' : ''} bg-black/40 backdrop-blur-3xl`}
           />
           <img 
             src={currentTrack?.cover || coverGradient} 
@@ -137,7 +180,7 @@ export default function MusicUniverseMode({
               }}
             >
               <motion.div 
-                className="absolute bottom-0 left-0 top-0 bg-gradient-to-r from-cyan-300 to-fuchsia-400 group-hover:from-cyan-200 group-hover:to-fuchsia-300 transition-all"
+                className="absolute bottom-0 left-0 top-0 bg-gradient-to-r from-secondary to-primary group-hover:from-cyan-200 group-hover:to-fuchsia-300 transition-all"
                 style={{ width: `${progressPercent}%` }}
                 layoutId="player-progress"
               />
@@ -168,10 +211,16 @@ export default function MusicUniverseMode({
 
           {/* Bottom actions */}
           <div className="mt-12 flex w-full items-center justify-between text-white/40">
-            <Volume2 size={20} className="hover:text-white transition-colors cursor-pointer" />
+            <button onClick={toggleMute} className="transition-colors hover:text-white">
+              <Volume2 size={20} className={isMuted ? 'text-red-500' : ''} />
+            </button>
             <div className="flex gap-4">
-              <Mic2 size={20} className="hover:text-white transition-colors cursor-pointer" />
-              <Disc3 size={20} className="hover:text-white transition-colors cursor-pointer" />
+              <button onClick={onLyrics} className="transition-colors hover:text-white">
+                <Mic2 size={20} />
+              </button>
+              <button onClick={onQueue} className="transition-colors hover:text-white">
+                <Disc3 size={20} />
+              </button>
             </div>
           </div>
         </div>

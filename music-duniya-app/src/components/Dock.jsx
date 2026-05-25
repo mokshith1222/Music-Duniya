@@ -1,15 +1,14 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { Heart, Home, ListMusic, MonitorPlay, Radio, Search, Sparkles } from 'lucide-react'
+import { Heart, Home, Library, Radio, Search, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 const links = [
   { to: '/', label: 'Home', icon: Home },
   { to: '/search', label: 'Search', icon: Search },
-  { to: '/youtube', label: 'YouTube', icon: MonitorPlay },
-  { to: '/jamendo', label: 'AI Finds', icon: Sparkles },
+  { to: '/library', label: 'Library', icon: Library },
   { to: '/radio', label: 'Radio', icon: Radio },
-  { to: '/playlist/daily', label: 'Queue', icon: ListMusic },
-  { to: '/favorites', label: 'Love', icon: Heart },
+  { to: '/mood', label: 'AI Moods', icon: Sparkles },
+  { to: '/liked', label: 'Liked', icon: Heart },
 ]
 
 export default function Dock() {

@@ -1,9 +1,9 @@
 import { Outlet, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
-import Dock from './Dock'
-import Navbar from './Navbar'
-import Player from './Player'
+import Dock from '../components/Dock'
+import Navbar from '../components/Navbar'
+import Player from '../player/Player'
 import DynamicBackground from '../visuals/DynamicBackground'
 
 export default function Layout() {
